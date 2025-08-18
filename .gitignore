@@ -74,6 +74,7 @@ docs/_build/
 *.temp
 .sass-cache/
 .claude/
+.github/
 
 # 專案特定檔案 (員工管理系統)
 # 如果將來需要排除特定的資料檔案，可以在這裡新增
