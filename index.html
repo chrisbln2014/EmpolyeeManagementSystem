@@ -110,9 +110,128 @@
                 });
             };
 
+            // 日期格式驗證函數
+            const validateDateFormat = (date) => {
+                if (!date) return false;
+                
+                // 支援 YYYY-MM-DD 格式（來自日期選擇器）
+                if (date.includes('-')) {
+                    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+                    if (!dateRegex.test(date)) return false;
+                    
+                    const [year, month, day] = date.split('-').map(num => parseInt(num));
+                    
+                    if (year < 1900 || year > new Date().getFullYear()) return false;
+                    if (month < 1 || month > 12) return false;
+                    if (day < 1 || day > 31) return false;
+                    
+                    // 檢查月份天數
+                    const daysInMonth = new Date(year, month, 0).getDate();
+                    return day <= daysInMonth;
+                }
+                
+                // 支援 YYYYMMDD 格式
+                const regex = /^\d{8}$/;
+                if (!regex.test(date)) return false;
+                
+                const year = parseInt(date.substring(0, 4));
+                const month = parseInt(date.substring(4, 6));
+                const day = parseInt(date.substring(6, 8));
+                
+                if (year < 1900 || year > new Date().getFullYear()) return false;
+                if (month < 1 || month > 12) return false;
+                if (day < 1 || day > 31) return false;
+                
+                // 檢查月份天數
+                const daysInMonth = new Date(year, month, 0).getDate();
+                return day <= daysInMonth;
+            };
+
+            // 日期格式轉換函數
+            const convertDateToYYYYMMDD = (date) => {
+                if (!date) return '';
+                if (date.includes('-')) {
+                    // YYYY-MM-DD 轉 YYYYMMDD
+                    return date.replace(/-/g, '');
+                }
+                return date; // 已經是 YYYYMMDD 格式
+            };
+
+            const convertDateToYYYY_MM_DD = (date) => {
+                if (!date) return '';
+                if (date.length === 8 && !date.includes('-')) {
+                    // YYYYMMDD 轉 YYYY-MM-DD
+                    return `${date.substring(0, 4)}-${date.substring(4, 6)}-${date.substring(6, 8)}`;
+                }
+                return date; // 已經是 YYYY-MM-DD 格式
+            };
+
+            // 表單驗證函數
+            const validateForm = () => {
+                const requiredFields = {
+                    employeeId: '員編',
+                    name: '姓名',
+                    department: '部門',
+                    position: '職務',
+                    gender: '性別',
+                    birthDate: '出生日期',
+                    hireDate: '到職日',
+                    maritalStatus: '婚姻狀況',
+                    nationality: '身份別',
+                    education: '學歷',
+                    graduationMajor: '畢業科系',
+                    travelWillingness: '外派意願',
+                    workLocation: '目前工作地點',
+                    careerDevelopment: '職涯發展意向',
+                    careerGoals: '個人的職涯目標',
+                    lifeGoals: '個人的職涯目標',
+                    achievementProject: '近期最具成就感的工作專案',
+                    mobile: '手機電話',
+                    email: '電子郵件',
+                    address: '通訊地址',
+                    residenceAddress: '戶籍地址',
+                    emergencyContactName: '緊急聯絡人姓名',
+                    emergencyContactRelation: '緊急聯絡人關係',
+                    emergencyContactPhone: '緊急聯絡人電話',
+                    healthInfo: '特殊健康狀況/過敏資訊'
+                };
+
+                // 檢查必填欄位
+                for (const [field, label] of Object.entries(requiredFields)) {
+                    if (!formData[field] || formData[field].toString().trim() === '') {
+                        alert(`請填寫必填欄位：${label}`);
+                        return false;
+                    }
+                }
+
+                // 檢查個資同意
+                if (!formData.privacyConsent) {
+                    alert('請同意個資使用條款');
+                    return false;
+                }
+
+                // 檢查日期格式
+                if (!validateDateFormat(formData.birthDate)) {
+                    alert('出生日期格式錯誤，請選擇正確的日期');
+                    return false;
+                }
+
+                if (!validateDateFormat(formData.hireDate)) {
+                    alert('到職日格式錯誤，請選擇正確的日期');
+                    return false;
+                }
+
+                // 檢查其他科系是否填寫
+                if (formData.graduationMajor === '其他' && (!formData.graduationMajorOther || formData.graduationMajorOther.trim() === '')) {
+                    alert('請填寫具體的畢業科系');
+                    return false;
+                }
+
+                return true;
+            };
+
             const handleCreate = () => {
-                if (!formData.employeeId || !formData.name || !formData.privacyConsent) {
-                    alert('請填寫必填欄位：員編、姓名，並同意個資使用條款');
+                if (!validateForm()) {
                     return;
                 }
                 
@@ -121,7 +240,14 @@
                     return;
                 }
 
-                const newEmployee = { ...formData, id: Date.now().toString() };
+                // 轉換日期格式為 YYYYMMDD 後儲存
+                const formDataToSave = {
+                    ...formData,
+                    birthDate: convertDateToYYYYMMDD(formData.birthDate),
+                    hireDate: convertDateToYYYYMMDD(formData.hireDate),
+                    id: Date.now().toString()
+                };
+                const newEmployee = formDataToSave;
                 const updatedEmployees = [...employees, newEmployee];
                 setEmployees(updatedEmployees);
                 saveToStorage(updatedEmployees);
@@ -131,13 +257,19 @@
             };
 
             const handleUpdate = () => {
-                if (!formData.employeeId || !formData.name || !formData.privacyConsent) {
-                    alert('請填寫必填欄位：員編、姓名，並同意個資使用條款');
+                if (!validateForm()) {
                     return;
                 }
 
+                // 轉換日期格式為 YYYYMMDD 後更新
+                const formDataToSave = {
+                    ...formData,
+                    birthDate: convertDateToYYYYMMDD(formData.birthDate),
+                    hireDate: convertDateToYYYYMMDD(formData.hireDate),
+                    id: selectedEmployee.id
+                };
                 const updatedEmployees = employees.map(emp => 
-                    emp.id === selectedEmployee.id ? { ...formData, id: selectedEmployee.id } : emp
+                    emp.id === selectedEmployee.id ? formDataToSave : emp
                 );
                 setEmployees(updatedEmployees);
                 saveToStorage(updatedEmployees);
@@ -160,6 +292,9 @@
                 setSelectedEmployee(employee);
                 setFormData({
                     ...employee,
+                    // 轉換日期格式為 YYYY-MM-DD 供日期選擇器使用
+                    birthDate: convertDateToYYYY_MM_DD(employee.birthDate || ''),
+                    hireDate: convertDateToYYYY_MM_DD(employee.hireDate || ''),
                     children: employee.children || [],
                     languageSkills: employee.languageSkills || [],
                     fixedLanguageSkills: employee.fixedLanguageSkills || {},
@@ -588,11 +723,12 @@
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">部門(選填)</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">部門 <span className="text-red-500">*</span></label>
                                         <select
                                             value={formData.department}
                                             onChange={(e) => handleInputChange('department', e.target.value)}
                                             className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                                            required
                                         >
                                             <option value="">請選擇部門</option>
                                             <option value="總公司">總公司</option>
@@ -613,21 +749,23 @@
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">職務</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">職務 <span className="text-red-500">*</span></label>
                                         <input
                                             type="text"
                                             value={formData.position}
                                             onChange={(e) => handleInputChange('position', e.target.value)}
                                             className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                                             placeholder="請輸入職務"
+                                            required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">性別</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">性別 <span className="text-red-500">*</span></label>
                                         <select
                                             value={formData.gender}
                                             onChange={(e) => handleInputChange('gender', e.target.value)}
                                             className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                                            required
                                         >
                                             <option value="">請選擇</option>
                                             <option value="男">男</option>
@@ -636,29 +774,42 @@
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">出生日期</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">出生日期 <span className="text-red-500">*</span></label>
                                         <input
                                             type="date"
                                             value={formData.birthDate}
                                             onChange={(e) => handleInputChange('birthDate', e.target.value)}
                                             className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                                            min="1900-01-01"
+                                            max={new Date().toISOString().split('T')[0]}
+                                            required
                                         />
+                                        <div className="text-xs text-gray-500 mt-1">💡 可選擇範圍：1900年至今天，系統將自動轉換為YYYYMMDD格式儲存</div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">到職日</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">到職日 <span className="text-red-500">*</span></label>
                                         <input
                                             type="date"
                                             value={formData.hireDate}
                                             onChange={(e) => handleInputChange('hireDate', e.target.value)}
                                             className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                                            min="1900-01-01"
+                                            max={(() => {
+                                                const today = new Date();
+                                                const futureDate = new Date(today.getFullYear() + 1, today.getMonth(), today.getDate());
+                                                return futureDate.toISOString().split('T')[0];
+                                            })()}
+                                            required
                                         />
+                                        <div className="text-xs text-gray-500 mt-1">💡 可選擇範圍：1900年至明年今日，系統將自動轉換為YYYYMMDD格式儲存</div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">婚姻狀況</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">婚姻狀況 <span className="text-red-500">*</span></label>
                                         <select
                                             value={formData.maritalStatus}
                                             onChange={(e) => handleInputChange('maritalStatus', e.target.value)}
                                             className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                                            required
                                         >
                                             <option value="">請選擇</option>
                                             <option value="已婚">已婚</option>
@@ -722,11 +873,12 @@
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">身份別</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">身份別 <span className="text-red-500">*</span></label>
                                         <select
                                             value={formData.nationality}
                                             onChange={(e) => handleInputChange('nationality', e.target.value)}
                                             className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                                            required
                                         >
                                             <option value="">請選擇</option>
                                             <option value="本國">本國</option>
@@ -734,11 +886,12 @@
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">學歷</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">學歷 <span className="text-red-500">*</span></label>
                                         <select
                                             value={formData.education}
                                             onChange={(e) => handleInputChange('education', e.target.value)}
                                             className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                                            required
                                         >
                                             <option value="">請選擇</option>
                                             <option value="高中以下">高中以下</option>
@@ -754,11 +907,12 @@
                                 {/* 畢業科系區塊 */}
                                 <div className="mt-6">
                                     <div className="md:col-span-2">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">畢業科系</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">畢業科系 <span className="text-red-500">*</span></label>
                                         <select
                                             value={formData.graduationMajor}
                                             onChange={(e) => handleInputChange('graduationMajor', e.target.value)}
                                             className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                                            required
                                         >
                                             <option value="">請選擇</option>
                                             <option value="文學相關">文學相關</option>
@@ -772,13 +926,14 @@
                                         </select>
                                         {formData.graduationMajor === '其他' && (
                                             <div className="mt-3">
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">請輸入具體科系</label>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">請輸入具體科系 <span className="text-red-500">*</span></label>
                                                 <input
                                                     type="text"
                                                     value={formData.graduationMajorOther}
                                                     onChange={(e) => handleInputChange('graduationMajorOther', e.target.value)}
                                                     className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                                                     placeholder="請輸入您的畢業科系"
+                                                    required
                                                 />
                                             </div>
                                         )}
@@ -992,13 +1147,14 @@
                                 </div>
                                 
                                 <div className="mt-6">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">特殊健康狀況/過敏資訊</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">特殊健康狀況/過敏資訊 <span className="text-red-500">*</span></label>
                                     <textarea
                                         value={formData.healthInfo}
                                         onChange={(e) => handleInputChange('healthInfo', e.target.value)}
                                         className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                                         rows={3}
-                                        placeholder="請填寫特殊健康狀況或過敏資訊（如無則可留空）"
+                                        placeholder="請填寫特殊健康狀況或過敏資訊（如無則請填寫：無）"
+                                        required
                                     />
                                 </div>
                             </div>
@@ -1009,11 +1165,12 @@
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">外派意願</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">外派意願 <span className="text-red-500">*</span></label>
                                         <select
                                             value={formData.travelWillingness}
                                             onChange={(e) => handleInputChange('travelWillingness', e.target.value)}
                                             className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                                            required
                                         >
                                             <option value="">請選擇</option>
                                             <option value="願意">願意</option>
@@ -1022,13 +1179,14 @@
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">目前工作地點</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">目前工作地點 <span className="text-red-500">*</span></label>
                                         <input
                                             type="text"
                                             value={formData.workLocation}
                                             onChange={(e) => handleInputChange('workLocation', e.target.value)}
                                             className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                                             placeholder="請輸入目前工作地點"
+                                            required
                                         />
                                     </div>
                                     
@@ -1133,11 +1291,12 @@
                                 </h3>
                                 <div className="space-y-6">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">職涯發展意向</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">職涯發展意向 <span className="text-red-500">*</span></label>
                                         <select
                                             value={formData.careerDevelopment}
                                             onChange={(e) => handleInputChange('careerDevelopment', e.target.value)}
                                             className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                                            required
                                         >
                                             <option value="">請選擇</option>
                                             <option value="不擅管理，喜專注自己工作範疇">不擅管理，喜專注自己工作範疇</option>
@@ -1148,11 +1307,12 @@
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">個人的職涯目標</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">個人的職涯目標 <span className="text-red-500">*</span></label>
                                         <select
                                             value={formData.careerGoals}
                                             onChange={(e) => handleInputChange('careerGoals', e.target.value)}
                                             className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                                            required
                                         >
                                             <option value="">請選擇</option>
                                             <option value="成為管理人才">成為管理人才</option>
@@ -1162,17 +1322,18 @@
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">個人的職涯目標</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">個人職涯目標與願景 <span className="text-red-500">*</span></label>
                                         <textarea
                                             value={formData.lifeGoals}
                                             onChange={(e) => handleInputChange('lifeGoals', e.target.value)}
                                             className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                                             rows={4}
                                             placeholder="請分享您的個人職涯目標與願景..."
+                                            required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">近期最具成就感的工作專案</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">近期最具成就感的工作專案 <span className="text-red-500">*</span></label>
                                         <div className="text-xs text-gray-500 mb-3 bg-blue-50 p-3 rounded-lg">
                                             💡 請描述專案名稱、您的角色與具體貢獻，讓我們更了解您的工作成就
                                         </div>
@@ -1182,6 +1343,7 @@
                                             className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                                             rows={5}
                                             placeholder="例如：&#10;專案名稱：客戶關係管理系統開發&#10;我的角色：前端開發工程師&#10;具體貢獻：負責使用者介面設計與開發，將系統使用便利性提升30%，獲得客戶高度好評..."
+                                            required
                                         />
                                     </div>
                                 </div>
@@ -1193,61 +1355,67 @@
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">手機電話</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">手機電話 <span className="text-red-500">*</span></label>
                                         <input
                                             type="tel"
                                             value={formData.mobile}
                                             onChange={(e) => handleInputChange('mobile', e.target.value)}
                                             className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                                             placeholder="請輸入手機號碼"
+                                            required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">電子郵件</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">電子郵件 <span className="text-red-500">*</span></label>
                                         <input
                                             type="email"
                                             value={formData.email}
                                             onChange={(e) => handleInputChange('email', e.target.value)}
                                             className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                                             placeholder="請輸入電子郵件"
+                                            required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">通訊地址</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">通訊地址 <span className="text-red-500">*</span></label>
                                         <input
                                             type="text"
                                             value={formData.address}
                                             onChange={(e) => handleInputChange('address', e.target.value)}
                                             className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                                             placeholder="請輸入通訊地址"
+                                            required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">戶籍地址</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">戶籍地址 <span className="text-red-500">*</span></label>
                                         <input
                                             type="text"
                                             value={formData.residenceAddress}
                                             onChange={(e) => handleInputChange('residenceAddress', e.target.value)}
                                             className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                                             placeholder="請輸入戶籍地址"
+                                            required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">緊急聯絡人姓名</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">緊急聯絡人姓名 <span className="text-red-500">*</span></label>
                                         <input
                                             type="text"
                                             value={formData.emergencyContactName}
                                             onChange={(e) => handleInputChange('emergencyContactName', e.target.value)}
                                             className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                                             placeholder="請輸入緊急聯絡人姓名"
+                                            required
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">緊急聯絡人關係</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">緊急聯絡人關係 <span className="text-red-500">*</span></label>
                                         <select
                                             value={formData.emergencyContactRelation}
                                             onChange={(e) => handleInputChange('emergencyContactRelation', e.target.value)}
                                             className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                                            required
                                         >
                                             <option value="">請選擇</option>
                                             <option value="配偶">配偶</option>
@@ -1257,13 +1425,14 @@
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">緊急聯絡人電話</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">緊急聯絡人電話 <span className="text-red-500">*</span></label>
                                         <input
                                             type="tel"
                                             value={formData.emergencyContactPhone}
                                             onChange={(e) => handleInputChange('emergencyContactPhone', e.target.value)}
                                             className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                                             placeholder="請輸入緊急聯絡人電話"
+                                            required
                                         />
                                     </div>
                                     <div>
