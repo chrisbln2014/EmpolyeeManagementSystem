@@ -38,6 +38,8 @@
                 nationality: '',
                 education: '',
                 certification: '',
+                certificationOptions: [],
+                certificationCustom: '',
                 graduationMajor: '',
                 graduationMajorOther: '',
                 languageSkills: [],
@@ -87,6 +89,8 @@
                     nationality: '',
                     education: '',
                     certification: '',
+                    certificationOptions: [],
+                    certificationCustom: '',
                     graduationMajor: '',
                     graduationMajorOther: '',
                     languageSkills: [],
@@ -230,10 +234,28 @@
                     return false;
                 }
 
-                // 檢查健康狀況是否有選擇
-                if ((!formData.healthInfoOptions || formData.healthInfoOptions.length === 0) && 
-                    (!formData.healthInfoCustom || formData.healthInfoCustom.trim() === '')) {
-                    alert('請選擇特殊健康狀況/過敏資訊或填寫其他說明');
+                // 檢查證照是否有選擇
+                if ((!formData.certificationOptions || formData.certificationOptions.length === 0) && 
+                    (!formData.certificationCustom || formData.certificationCustom.trim() === '')) {
+                    alert('請選擇證照類型或填寫其他證照說明');
+                    return false;
+                }
+
+                // 檢查語言能力是否有填寫
+                const hasFixedLanguageSkill = formData.fixedLanguageSkills && 
+                    Object.keys(formData.fixedLanguageSkills).length > 0 &&
+                    Object.values(formData.fixedLanguageSkills).some(lang => 
+                        lang && Object.values(lang).some(skill => skill && skill.trim() !== '')
+                    );
+                const hasCustomLanguageSkill = formData.languageSkills && 
+                    formData.languageSkills.length > 0 &&
+                    formData.languageSkills.some(skill => 
+                        skill.language && skill.language.trim() !== '' &&
+                        (skill.listening || skill.speaking || skill.reading || skill.writing)
+                    );
+                
+                if (!hasFixedLanguageSkill && !hasCustomLanguageSkill) {
+                    alert('請至少填寫一項語言能力（中文、英文或其他語言）');
                     return false;
                 }
 
@@ -313,7 +335,9 @@
                     careerDevelopment: employee.careerDevelopment || '',
                     achievementProject: employee.achievementProject || '',
                     healthInfoOptions: employee.healthInfoOptions || [],
-                    healthInfoCustom: employee.healthInfoCustom || ''
+                    healthInfoCustom: employee.healthInfoCustom || '',
+                    certificationOptions: employee.certificationOptions || [],
+                    certificationCustom: employee.certificationCustom || ''
                 });
                 setCurrentView('edit');
             };
@@ -463,6 +487,70 @@
                         ...prev,
                         healthInfoCustom: value,
                         healthInfo: healthInfoText
+                    };
+                });
+            };
+
+            // 證照管理功能
+            const handleCertificationOptionChange = (option, checked) => {
+                setFormData(prev => {
+                    let newOptions;
+                    
+                    if (option === '無') {
+                        // 如果選擇"無"，則清空其他所有選項，只保留"無"
+                        if (checked) {
+                            newOptions = ['無'];
+                        } else {
+                            newOptions = [];
+                        }
+                    } else {
+                        // 如果選擇其他選項，先移除"無"（如果存在）
+                        const filteredOptions = prev.certificationOptions.filter(opt => opt !== '無');
+                        
+                        if (checked) {
+                            newOptions = [...filteredOptions, option];
+                        } else {
+                            newOptions = filteredOptions.filter(opt => opt !== option);
+                        }
+                    }
+                    
+                    // 更新 certification 字段
+                    let certificationText = '';
+                    if (newOptions.length > 0) {
+                        certificationText = newOptions.join(', ');
+                        if (prev.certificationCustom && !newOptions.includes('無')) {
+                            certificationText += ', ' + prev.certificationCustom;
+                        }
+                    } else if (prev.certificationCustom) {
+                        certificationText = prev.certificationCustom;
+                    }
+                    
+                    return {
+                        ...prev,
+                        certificationOptions: newOptions,
+                        certification: certificationText
+                    };
+                });
+            };
+
+            const updateCertificationCustom = (value) => {
+                setFormData(prev => {
+                    // 更新 certification 字段
+                    let certificationText = '';
+                    if (prev.certificationOptions.length > 0) {
+                        certificationText = prev.certificationOptions.join(', ');
+                        // 只有在沒有選擇"無"的情況下才加入自訂內容
+                        if (value && !prev.certificationOptions.includes('無')) {
+                            certificationText += ', ' + value;
+                        }
+                    } else if (value) {
+                        certificationText = value;
+                    }
+                    
+                    return {
+                        ...prev,
+                        certificationCustom: value,
+                        certification: certificationText
                     };
                 });
             };
@@ -1016,23 +1104,138 @@
                                     </div>
                                 </div>
                                 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">證照 (選填)</label>
-                                        <input
-                                            type="text"
-                                            value={formData.certification}
-                                            onChange={(e) => handleInputChange('certification', e.target.value)}
-                                            className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                                            placeholder="請輸入相關證照"
+                                <div className="mt-6">
+                                    <label className="block text-sm font-medium text-gray-700 mb-4">證照 <span className="text-red-500">*</span></label>
+                                    
+                                    {/* 固定證照選項 - 多選 */}
+                                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-4">
+                                        <div className="mb-3">
+                                            <span className="text-sm font-medium text-gray-600">證照類型選項</span>
+                                            <div className="text-xs text-gray-500 mt-1">💡 註：選擇"無"時為單選，不可同時選擇其他選項</div>
+                                        </div>
+                                        <div className="space-y-3">
+                                            <label className="flex items-center space-x-3 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.certificationOptions?.includes('無') || false}
+                                                    onChange={(e) => handleCertificationOptionChange('無', e.target.checked)}
+                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                />
+                                                <span className="text-sm text-gray-700 font-medium">無</span>
+                                                <span className="text-xs text-gray-400">(單選)</span>
+                                            </label>
+                                        </div>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
+                                            <label className="flex items-center space-x-3 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.certificationOptions?.includes('勞工安全') || false}
+                                                    onChange={(e) => handleCertificationOptionChange('勞工安全', e.target.checked)}
+                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                    disabled={formData.certificationOptions?.includes('無')}
+                                                />
+                                                <span className={`text-sm ${formData.certificationOptions?.includes('無') ? 'text-gray-400' : 'text-gray-700'}`}>勞工安全</span>
+                                            </label>
+                                            <label className="flex items-center space-x-3 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.certificationOptions?.includes('有機溶劑') || false}
+                                                    onChange={(e) => handleCertificationOptionChange('有機溶劑', e.target.checked)}
+                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                    disabled={formData.certificationOptions?.includes('無')}
+                                                />
+                                                <span className={`text-sm ${formData.certificationOptions?.includes('無') ? 'text-gray-400' : 'text-gray-700'}`}>有機溶劑</span>
+                                            </label>
+                                            <label className="flex items-center space-x-3 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.certificationOptions?.includes('特定化學') || false}
+                                                    onChange={(e) => handleCertificationOptionChange('特定化學', e.target.checked)}
+                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                    disabled={formData.certificationOptions?.includes('無')}
+                                                />
+                                                <span className={`text-sm ${formData.certificationOptions?.includes('無') ? 'text-gray-400' : 'text-gray-700'}`}>特定化學</span>
+                                            </label>
+                                            <label className="flex items-center space-x-3 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.certificationOptions?.includes('急救人員') || false}
+                                                    onChange={(e) => handleCertificationOptionChange('急救人員', e.target.checked)}
+                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                    disabled={formData.certificationOptions?.includes('無')}
+                                                />
+                                                <span className={`text-sm ${formData.certificationOptions?.includes('無') ? 'text-gray-400' : 'text-gray-700'}`}>急救人員</span>
+                                            </label>
+                                            <label className="flex items-center space-x-3 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.certificationOptions?.includes('施工架作業') || false}
+                                                    onChange={(e) => handleCertificationOptionChange('施工架作業', e.target.checked)}
+                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                    disabled={formData.certificationOptions?.includes('無')}
+                                                />
+                                                <span className={`text-sm ${formData.certificationOptions?.includes('無') ? 'text-gray-400' : 'text-gray-700'}`}>施工架作業</span>
+                                            </label>
+                                            <label className="flex items-center space-x-3 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.certificationOptions?.includes('缺氧') || false}
+                                                    onChange={(e) => handleCertificationOptionChange('缺氧', e.target.checked)}
+                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                    disabled={formData.certificationOptions?.includes('無')}
+                                                />
+                                                <span className={`text-sm ${formData.certificationOptions?.includes('無') ? 'text-gray-400' : 'text-gray-700'}`}>缺氧</span>
+                                            </label>
+                                            <label className="flex items-center space-x-3 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.certificationOptions?.includes('粉塵') || false}
+                                                    onChange={(e) => handleCertificationOptionChange('粉塵', e.target.checked)}
+                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                    disabled={formData.certificationOptions?.includes('無')}
+                                                />
+                                                <span className={`text-sm ${formData.certificationOptions?.includes('無') ? 'text-gray-400' : 'text-gray-700'}`}>粉塵</span>
+                                            </label>
+                                            <label className="flex items-center space-x-3 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.certificationOptions?.includes('高空工作車') || false}
+                                                    onChange={(e) => handleCertificationOptionChange('高空工作車', e.target.checked)}
+                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                    disabled={formData.certificationOptions?.includes('無')}
+                                                />
+                                                <span className={`text-sm ${formData.certificationOptions?.includes('無') ? 'text-gray-400' : 'text-gray-700'}`}>高空工作車</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    {/* 其他證照自訂輸入 */}
+                                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                        <div className="mb-3">
+                                            <span className="text-sm font-medium text-gray-600">其他證照</span>
+                                            {formData.certificationOptions?.includes('無') && (
+                                                <div className="text-xs text-orange-600 mt-1">選擇"無"時不可填寫其他證照</div>
+                                            )}
+                                        </div>
+                                        <textarea
+                                            value={formData.certificationCustom || ''}
+                                            onChange={(e) => updateCertificationCustom(e.target.value)}
+                                            className={`w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${
+                                                formData.certificationOptions?.includes('無') ? 'bg-gray-200 cursor-not-allowed' : ''
+                                            }`}
+                                            rows={3}
+                                            placeholder={formData.certificationOptions?.includes('無') ? 
+                                                "已選擇「無」，無法填寫其他證照" : 
+                                                "如有其他證照，請在此詳細說明..."
+                                            }
+                                            disabled={formData.certificationOptions?.includes('無')}
                                         />
-                                        <div className="text-xs text-gray-500 mt-1">💡 [TBD]註記：需要提供選項</div>
                                     </div>
                                 </div>
                                 
                                 {/* 語言能力區塊 */}
                                 <div className="mt-8">
-                                    <label className="block text-sm font-medium text-gray-700 mb-4">語言能力 (選填)</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-4">語言能力 <span className="text-red-500">*</span></label>
                                     
                                     {/* 固定語言選項 */}
                                     <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-4">
@@ -1218,88 +1421,6 @@
                                         </div>
                                     </div>
                                 </div>
-                                
-                                <div className="mt-6">
-                                    <label className="block text-sm font-medium text-gray-700 mb-4">特殊健康狀況/過敏資訊 <span className="text-red-500">*</span></label>
-                                    
-                                    {/* 固定選項 - 多選 */}
-                                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-4">
-                                        <div className="mb-3">
-                                            <span className="text-sm font-medium text-gray-600">健康狀況選項</span>
-                                            <div className="text-xs text-gray-500 mt-1">註：選擇"無"時為單選，不可同時選擇其他選項</div>
-                                        </div>
-                                        <div className="space-y-3">
-                                            <label className="flex items-center space-x-3 cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={formData.healthInfoOptions.includes('無')}
-                                                    onChange={(e) => handleHealthInfoOptionChange('無', e.target.checked)}
-                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                                />
-                                                <span className="text-sm text-gray-700 font-medium">無</span>
-                                                <span className="text-xs text-gray-400">(單選)</span>
-                                            </label>
-                                            <label className="flex items-center space-x-3 cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={formData.healthInfoOptions.includes('A類健康狀況')}
-                                                    onChange={(e) => handleHealthInfoOptionChange('A類健康狀況', e.target.checked)}
-                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                                    disabled={formData.healthInfoOptions.includes('無')}
-                                                />
-                                                <span className={`text-sm ${formData.healthInfoOptions.includes('無') ? 'text-gray-400' : 'text-gray-700'} font-medium`}>A類健康狀況</span>
-                                            </label>
-                                            <label className="flex items-center space-x-3 cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={formData.healthInfoOptions.includes('B類健康狀況')}
-                                                    onChange={(e) => handleHealthInfoOptionChange('B類健康狀況', e.target.checked)}
-                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                                    disabled={formData.healthInfoOptions.includes('無')}
-                                                />
-                                                <span className={`text-sm ${formData.healthInfoOptions.includes('無') ? 'text-gray-400' : 'text-gray-700'} font-medium`}>B類健康狀況</span>
-                                            </label>
-                                            <label className="flex items-center space-x-3 cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={formData.healthInfoOptions.includes('C類健康狀況')}
-                                                    onChange={(e) => handleHealthInfoOptionChange('C類健康狀況', e.target.checked)}
-                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                                    disabled={formData.healthInfoOptions.includes('無')}
-                                                />
-                                                <span className={`text-sm ${formData.healthInfoOptions.includes('無') ? 'text-gray-400' : 'text-gray-700'} font-medium`}>C類健康狀況</span>
-                                            </label>
-                                        </div>
-                                    </div>
-
-                                    {/* 其他自訂輸入 */}
-                                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                                        <div className="mb-3">
-                                            <span className="text-sm font-medium text-gray-600">其他說明</span>
-                                            {formData.healthInfoOptions.includes('無') && (
-                                                <div className="text-xs text-orange-600 mt-1">選擇"無"時不可填寫其他說明</div>
-                                            )}
-                                        </div>
-                                        <textarea
-                                            value={formData.healthInfoCustom}
-                                            onChange={(e) => updateHealthInfoCustom(e.target.value)}
-                                            className={`w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${
-                                                formData.healthInfoOptions.includes('無') ? 'bg-gray-200 cursor-not-allowed' : ''
-                                            }`}
-                                            rows={3}
-                                            placeholder={formData.healthInfoOptions.includes('無') ? 
-                                                "已選擇「無」，無法填寫其他說明" : 
-                                                "如有其他特殊健康狀況或過敏資訊，請在此詳細說明..."
-                                            }
-                                            disabled={formData.healthInfoOptions.includes('無')}
-                                        />
-                                    </div>
-                                    
-                                    <div className="text-xs text-gray-500 mt-2">
-                                        💡 註記：A、B、C類健康狀況需要提供具體選項內容<br/>
-                                        ⚠️ 至少需選擇一個選項或填寫其他說明
-                                    </div>
-                                </div>
                             </div>
 
                             <div>
@@ -1309,9 +1430,6 @@
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">國外派遣意願 <span className="text-red-500">*</span></label>
-                                        <div className="text-xs text-gray-500 mb-3 bg-blue-50 p-3 rounded-lg">
-                                            💡 [TBD]需要定義國外派遣的意思, (Ex:需離開目前工作地點半個月以上的工作安排（包含國內外出差、駐點等）)
-                                        </div>
                                         <select
                                             value={formData.travelWillingness}
                                             onChange={(e) => handleInputChange('travelWillingness', e.target.value)}
@@ -1464,10 +1582,7 @@
                                             <option value="成為管理人才">成為管理人才</option>
                                             <option value="成為專職人員(有證照)">成為專職人員(有證照)</option>
                                             <option value="成為專職人員(無證照)">成為專職人員(無證照)</option>
-                                            <option value="專業認證與資格取得">專業認證與資格取得</option>
-                                            <option value="跨國工作經驗">跨國工作經驗</option>
                                         </select>
-                                        <div className="text-xs text-gray-500 mt-1">💡 [TBD]註記：需要檢視是否調整選項內容</div>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">個人職涯目標與願景 <span className="text-red-500">*</span></label>
