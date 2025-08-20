@@ -47,6 +47,8 @@
                 customTravelLocations: [],
                 workLocation: '',
                 healthInfo: '',
+                healthInfoOptions: [],
+                healthInfoCustom: '',
                 mobile: '',
                 email: '',
                 address: '',
@@ -94,6 +96,8 @@
                     customTravelLocations: [],
                     workLocation: '',
                     healthInfo: '',
+                    healthInfoOptions: [],
+                    healthInfoCustom: '',
                     mobile: '',
                     email: '',
                     address: '',
@@ -180,7 +184,7 @@
                     nationality: '身份別',
                     education: '學歷',
                     graduationMajor: '畢業科系',
-                    travelWillingness: '外派意願',
+                    travelWillingness: '國外派遣意願',
                     workLocation: '目前工作地點',
                     careerDevelopment: '職涯發展意向',
                     careerGoals: '個人的職涯目標',
@@ -192,8 +196,7 @@
                     residenceAddress: '戶籍地址',
                     emergencyContactName: '緊急聯絡人姓名',
                     emergencyContactRelation: '緊急聯絡人關係',
-                    emergencyContactPhone: '緊急聯絡人電話',
-                    healthInfo: '特殊健康狀況/過敏資訊'
+                    emergencyContactPhone: '緊急聯絡人電話'
                 };
 
                 // 檢查必填欄位
@@ -224,6 +227,13 @@
                 // 檢查其他科系是否填寫
                 if (formData.graduationMajor === '其他' && (!formData.graduationMajorOther || formData.graduationMajorOther.trim() === '')) {
                     alert('請填寫具體的畢業科系');
+                    return false;
+                }
+
+                // 檢查健康狀況是否有選擇
+                if ((!formData.healthInfoOptions || formData.healthInfoOptions.length === 0) && 
+                    (!formData.healthInfoCustom || formData.healthInfoCustom.trim() === '')) {
+                    alert('請選擇特殊健康狀況/過敏資訊或填寫其他說明');
                     return false;
                 }
 
@@ -301,7 +311,9 @@
                     travelLocations: employee.travelLocations || [],
                     customTravelLocations: employee.customTravelLocations || [],
                     careerDevelopment: employee.careerDevelopment || '',
-                    achievementProject: employee.achievementProject || ''
+                    achievementProject: employee.achievementProject || '',
+                    healthInfoOptions: employee.healthInfoOptions || [],
+                    healthInfoCustom: employee.healthInfoCustom || ''
                 });
                 setCurrentView('edit');
             };
@@ -391,7 +403,71 @@
                 }));
             };
 
-            // 外派地點管理功能
+            // 健康狀況管理功能
+            const handleHealthInfoOptionChange = (option, checked) => {
+                setFormData(prev => {
+                    let newOptions;
+                    
+                    if (option === '無') {
+                        // 如果選擇"無"，則清空其他所有選項，只保留"無"
+                        if (checked) {
+                            newOptions = ['無'];
+                        } else {
+                            newOptions = [];
+                        }
+                    } else {
+                        // 如果選擇其他選項，先移除"無"（如果存在）
+                        const filteredOptions = prev.healthInfoOptions.filter(opt => opt !== '無');
+                        
+                        if (checked) {
+                            newOptions = [...filteredOptions, option];
+                        } else {
+                            newOptions = filteredOptions.filter(opt => opt !== option);
+                        }
+                    }
+                    
+                    // 更新 healthInfo 字段
+                    let healthInfoText = '';
+                    if (newOptions.length > 0) {
+                        healthInfoText = newOptions.join(', ');
+                        if (prev.healthInfoCustom && !newOptions.includes('無')) {
+                            healthInfoText += ', ' + prev.healthInfoCustom;
+                        }
+                    } else if (prev.healthInfoCustom) {
+                        healthInfoText = prev.healthInfoCustom;
+                    }
+                    
+                    return {
+                        ...prev,
+                        healthInfoOptions: newOptions,
+                        healthInfo: healthInfoText
+                    };
+                });
+            };
+
+            const updateHealthInfoCustom = (value) => {
+                setFormData(prev => {
+                    // 更新 healthInfo 字段
+                    let healthInfoText = '';
+                    if (prev.healthInfoOptions.length > 0) {
+                        healthInfoText = prev.healthInfoOptions.join(', ');
+                        // 只有在沒有選擇"無"的情況下才加入自訂內容
+                        if (value && !prev.healthInfoOptions.includes('無')) {
+                            healthInfoText += ', ' + value;
+                        }
+                    } else if (value) {
+                        healthInfoText = value;
+                    }
+                    
+                    return {
+                        ...prev,
+                        healthInfoCustom: value,
+                        healthInfo: healthInfoText
+                    };
+                });
+            };
+
+            // 國外派遣地點管理功能
             const handleTravelLocationChange = (location, checked) => {
                 setFormData(prev => {
                     if (checked) {
@@ -410,7 +486,7 @@
                 });
             };
 
-            // 自訂外派地點管理
+            // 自訂國外派遣地點管理
             const addCustomTravelLocation = () => {
                 setFormData(prev => ({
                     ...prev,
@@ -573,7 +649,7 @@
                                                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">職務</th>
                                                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">畢業科系</th>
                                                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">子女</th>
-                                                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">外派地點</th>
+                                                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">國外派遣地點</th>
                                                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
                                                 </tr>
                                             </thead>
@@ -784,7 +860,7 @@
                                             max={new Date().toISOString().split('T')[0]}
                                             required
                                         />
-                                        <div className="text-xs text-gray-500 mt-1">💡 可選擇範圍：1900年至今天，系統將自動轉換為YYYYMMDD格式儲存</div>
+                                        <div className="text-xs text-gray-500 mt-1">⏰ 可選擇範圍：1900年至今天，系統將自動轉換為YYYYMMDD格式儲存</div>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">到職日 <span className="text-red-500">*</span></label>
@@ -801,7 +877,7 @@
                                             })()}
                                             required
                                         />
-                                        <div className="text-xs text-gray-500 mt-1">💡 可選擇範圍：1900年至明年今日，系統將自動轉換為YYYYMMDD格式儲存</div>
+                                        <div className="text-xs text-gray-500 mt-1">⏰ 可選擇範圍：1900年至明年今日，系統將自動轉換為YYYYMMDD格式儲存</div>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">婚姻狀況 <span className="text-red-500">*</span></label>
@@ -950,6 +1026,7 @@
                                             className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
                                             placeholder="請輸入相關證照"
                                         />
+                                        <div className="text-xs text-gray-500 mt-1">💡 [TBD]註記：需要提供選項</div>
                                     </div>
                                 </div>
                                 
@@ -1140,34 +1217,100 @@
                                             )}
                                         </div>
                                     </div>
-                                    
-                                    <div className="mt-3 text-xs text-gray-500">
-                                        💡 可填寫固定語言選項或自行新增其他語言
-                                    </div>
                                 </div>
                                 
                                 <div className="mt-6">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">特殊健康狀況/過敏資訊 <span className="text-red-500">*</span></label>
-                                    <textarea
-                                        value={formData.healthInfo}
-                                        onChange={(e) => handleInputChange('healthInfo', e.target.value)}
-                                        className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                                        rows={3}
-                                        placeholder="請填寫特殊健康狀況或過敏資訊（如無則請填寫：無）"
-                                        required
-                                    />
+                                    <label className="block text-sm font-medium text-gray-700 mb-4">特殊健康狀況/過敏資訊 <span className="text-red-500">*</span></label>
+                                    
+                                    {/* 固定選項 - 多選 */}
+                                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-4">
+                                        <div className="mb-3">
+                                            <span className="text-sm font-medium text-gray-600">健康狀況選項</span>
+                                            <div className="text-xs text-gray-500 mt-1">註：選擇"無"時為單選，不可同時選擇其他選項</div>
+                                        </div>
+                                        <div className="space-y-3">
+                                            <label className="flex items-center space-x-3 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.healthInfoOptions.includes('無')}
+                                                    onChange={(e) => handleHealthInfoOptionChange('無', e.target.checked)}
+                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                />
+                                                <span className="text-sm text-gray-700 font-medium">無</span>
+                                                <span className="text-xs text-gray-400">(單選)</span>
+                                            </label>
+                                            <label className="flex items-center space-x-3 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.healthInfoOptions.includes('A類健康狀況')}
+                                                    onChange={(e) => handleHealthInfoOptionChange('A類健康狀況', e.target.checked)}
+                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                    disabled={formData.healthInfoOptions.includes('無')}
+                                                />
+                                                <span className={`text-sm ${formData.healthInfoOptions.includes('無') ? 'text-gray-400' : 'text-gray-700'} font-medium`}>A類健康狀況</span>
+                                            </label>
+                                            <label className="flex items-center space-x-3 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.healthInfoOptions.includes('B類健康狀況')}
+                                                    onChange={(e) => handleHealthInfoOptionChange('B類健康狀況', e.target.checked)}
+                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                    disabled={formData.healthInfoOptions.includes('無')}
+                                                />
+                                                <span className={`text-sm ${formData.healthInfoOptions.includes('無') ? 'text-gray-400' : 'text-gray-700'} font-medium`}>B類健康狀況</span>
+                                            </label>
+                                            <label className="flex items-center space-x-3 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.healthInfoOptions.includes('C類健康狀況')}
+                                                    onChange={(e) => handleHealthInfoOptionChange('C類健康狀況', e.target.checked)}
+                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                    disabled={formData.healthInfoOptions.includes('無')}
+                                                />
+                                                <span className={`text-sm ${formData.healthInfoOptions.includes('無') ? 'text-gray-400' : 'text-gray-700'} font-medium`}>C類健康狀況</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    {/* 其他自訂輸入 */}
+                                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                        <div className="mb-3">
+                                            <span className="text-sm font-medium text-gray-600">其他說明</span>
+                                            {formData.healthInfoOptions.includes('無') && (
+                                                <div className="text-xs text-orange-600 mt-1">選擇"無"時不可填寫其他說明</div>
+                                            )}
+                                        </div>
+                                        <textarea
+                                            value={formData.healthInfoCustom}
+                                            onChange={(e) => updateHealthInfoCustom(e.target.value)}
+                                            className={`w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${
+                                                formData.healthInfoOptions.includes('無') ? 'bg-gray-200 cursor-not-allowed' : ''
+                                            }`}
+                                            rows={3}
+                                            placeholder={formData.healthInfoOptions.includes('無') ? 
+                                                "已選擇「無」，無法填寫其他說明" : 
+                                                "如有其他特殊健康狀況或過敏資訊，請在此詳細說明..."
+                                            }
+                                            disabled={formData.healthInfoOptions.includes('無')}
+                                        />
+                                    </div>
+                                    
+                                    <div className="text-xs text-gray-500 mt-2">
+                                        💡 註記：A、B、C類健康狀況需要提供具體選項內容<br/>
+                                        ⚠️ 至少需選擇一個選項或填寫其他說明
+                                    </div>
                                 </div>
                             </div>
 
                             <div>
                                 <h3 className="text-xl font-semibold text-gray-800 mb-6 flex items-center gap-3 border-b border-gray-200 pb-3">
-                                    💼 二、外派意願
+                                    💼 二、國外派遣意願
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">外派意願 <span className="text-red-500">*</span></label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">國外派遣意願 <span className="text-red-500">*</span></label>
                                         <div className="text-xs text-gray-500 mb-3 bg-blue-50 p-3 rounded-lg">
-                                            💡 外派定義：需離開目前工作地點半個月以上的工作安排（包含國內外出差、駐點等）
+                                            💡 [TBD]需要定義國外派遣的意思, (Ex:需離開目前工作地點半個月以上的工作安排（包含國內外出差、駐點等）)
                                         </div>
                                         <select
                                             value={formData.travelWillingness}
@@ -1193,10 +1336,10 @@
                                         />
                                     </div>
                                     
-                                    {/* 外派地點選擇 - 只有在外派意願不是「無法」時才顯示 */}
+                                    {/* 外派地點選擇 - 只有在國外派遣意願不是「無法」時才顯示 */}
                                     {formData.travelWillingness && formData.travelWillingness !== '無法' && (
                                         <div className="md:col-span-2">
-                                            <label className="block text-sm font-medium text-gray-700 mb-3">外派地點選擇 (可多選)</label>
+                                            <label className="block text-sm font-medium text-gray-700 mb-3">國外派遣地點選擇 (可多選)</label>
                                             
                                             {/* 固定選項 */}
                                             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 mb-4">
@@ -1244,7 +1387,7 @@
                                                                 type="text"
                                                                 value={customLocation.location}
                                                                 onChange={(e) => updateCustomTravelLocation(customLocation.id, e.target.value)}
-                                                                placeholder="請輸入其他外派地點"
+                                                                placeholder="請輸入其他國外派遣地點"
                                                                 className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
                                                             />
                                                             <button
@@ -1266,20 +1409,20 @@
                                             </div>
                                             
                                             <div className="mt-3 text-xs text-gray-500">
-                                                💡 可選擇固定選項或自行新增其他外派地點
+                                                💡 可選擇固定選項或自行新增其他國外派遣地點
                                             </div>
                                         </div>
                                     )}
 
-                                    {/* 當選擇「無法」外派時顯示提示訊息 */}
+                                    {/* 當選擇「無法」國外派遣時顯示提示訊息 */}
                                     {formData.travelWillingness === '無法' && (
                                         <div className="md:col-span-2">
                                             <div className="bg-gray-100 rounded-lg p-4 border border-gray-300">
                                                 <div className="flex items-center gap-3 text-gray-600">
                                                     <div className="text-2xl">ℹ️</div>
                                                     <div>
-                                                        <p className="text-sm font-medium">您選擇了「無法」外派</p>
-                                                        <p className="text-xs text-gray-500 mt-1">因此無需選擇外派地點</p>
+                                                        <p className="text-sm font-medium">您選擇了「無法」國外派遣</p>
+                                                        <p className="text-xs text-gray-500 mt-1">因此無需選擇國外派遣地點</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1324,6 +1467,7 @@
                                             <option value="專業認證與資格取得">專業認證與資格取得</option>
                                             <option value="跨國工作經驗">跨國工作經驗</option>
                                         </select>
+                                        <div className="text-xs text-gray-500 mt-1">💡 [TBD]註記：需要檢視是否調整選項內容</div>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">個人職涯目標與願景 <span className="text-red-500">*</span></label>
