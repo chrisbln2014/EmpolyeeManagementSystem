@@ -60,7 +60,7 @@
                 emergencyContactPhone: '',
                 emergencyContactBackupPhone: '',
                 lifeGoals: '',
-                careerGoals: '',
+                careerGoals: [],
                 careerDevelopment: '',
                 achievementProject: '',
                 privacyConsent: false
@@ -111,7 +111,7 @@
                     emergencyContactPhone: '',
                     emergencyContactBackupPhone: '',
                     lifeGoals: '',
-                    careerGoals: '',
+                    careerGoals: [],
                     careerDevelopment: '',
                     achievementProject: '',
                     privacyConsent: false
@@ -191,7 +191,7 @@
                     travelWillingness: '國外派遣意願',
                     workLocation: '目前工作地點',
                     careerDevelopment: '職涯發展意向',
-                    careerGoals: '個人的職涯目標',
+                    careerGoals: ['成為管理人才'],
                     lifeGoals: '個人的職涯目標',
                     achievementProject: '請分享您工作上最有成就感的工作表現(不僅限於目前目前公司)',
                     mobile: '手機電話',
@@ -205,9 +205,17 @@
 
                 // 檢查必填欄位
                 for (const [field, label] of Object.entries(requiredFields)) {
-                    if (!formData[field] || formData[field].toString().trim() === '') {
-                        alert(`請填寫必填欄位：${label}`);
-                        return false;
+                    if (field === 'careerGoals') {
+                        // 特殊處理陣列類型的 careerGoals
+                        if (!formData[field] || !Array.isArray(formData[field]) || formData[field].length === 0) {
+                            alert(`請選擇必填欄位：${label}`);
+                            return false;
+                        }
+                    } else {
+                        if (!formData[field] || formData[field].toString().trim() === '') {
+                            alert(`請填寫必填欄位：${label}`);
+                            return false;
+                        }
                     }
                 }
 
@@ -333,6 +341,7 @@
                     travelLocations: employee.travelLocations || [],
                     customTravelLocations: employee.customTravelLocations || [],
                     careerDevelopment: employee.careerDevelopment || '',
+                    careerGoals: employee.careerGoals || [],
                     achievementProject: employee.achievementProject || '',
                     healthInfoOptions: employee.healthInfoOptions || [],
                     healthInfoCustom: employee.healthInfoCustom || '',
@@ -551,6 +560,24 @@
                         ...prev,
                         certificationCustom: value,
                         certification: certificationText
+                    };
+                });
+            };
+
+            // 個人職涯目標多選處理功能
+            const updateCareerGoalsOptions = (option, checked) => {
+                setFormData(prev => {
+                    let newOptions = [];
+                    
+                    if (checked) {
+                        newOptions = [...prev.careerGoals, option];
+                    } else {
+                        newOptions = prev.careerGoals.filter(opt => opt !== option);
+                    }
+                    
+                    return {
+                        ...prev,
+                        careerGoals: newOptions
                     };
                 });
             };
@@ -1570,18 +1597,42 @@
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">個人的職涯目標 <span className="text-red-500">*</span></label>
-                                        <select
-                                            value={formData.careerGoals}
-                                            onChange={(e) => handleInputChange('careerGoals', e.target.value)}
-                                            className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                                            required
-                                        >
-                                            <option value="">請選擇</option>
-                                            <option value="成為管理人才">成為管理人才</option>
-                                            <option value="成為專職人員(有證照)">成為專職人員(有證照)</option>
-                                            <option value="成為專職人員(無證照)">成為專職人員(無證照)</option>
-                                        </select>
+                                        <label className="block text-sm font-medium text-gray-700 mb-3">個人的職涯目標 <span className="text-red-500">*</span></label>
+                                        
+                                        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                            <div className="mb-3">
+                                                <span className="text-sm font-medium text-gray-600">職涯目標選項 (可多選)</span>
+                                            </div>
+                                            <div className="space-y-3">
+                                                <label className="flex items-center space-x-3 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.careerGoals?.includes('成為管理人才') || false}
+                                                        onChange={(e) => updateCareerGoalsOptions('成為管理人才', e.target.checked)}
+                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                    />
+                                                    <span className="text-sm text-gray-700">成為管理人才</span>
+                                                </label>
+                                                <label className="flex items-center space-x-3 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.careerGoals?.includes('成為專職人員(有證照)') || false}
+                                                        onChange={(e) => updateCareerGoalsOptions('成為專職人員(有證照)', e.target.checked)}
+                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                    />
+                                                    <span className="text-sm text-gray-700">成為專職人員(有證照)</span>
+                                                </label>
+                                                <label className="flex items-center space-x-3 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.careerGoals?.includes('成為專職人員(無證照)') || false}
+                                                        onChange={(e) => updateCareerGoalsOptions('成為專職人員(無證照)', e.target.checked)}
+                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                    />
+                                                    <span className="text-sm text-gray-700">成為專職人員(無證照)</span>
+                                                </label>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">個人職涯目標與願景 <span className="text-red-500">*</span></label>
