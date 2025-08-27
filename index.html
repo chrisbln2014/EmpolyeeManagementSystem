@@ -61,6 +61,7 @@
                 emergencyContactBackupPhone: '',
                 lifeGoals: '',
                 careerGoals: [],
+                interestedDepartments: [],
                 careerDevelopment: '',
                 achievementProject: '',
                 privacyConsent: false
@@ -112,6 +113,7 @@
                     emergencyContactBackupPhone: '',
                     lifeGoals: '',
                     careerGoals: [],
+                    interestedDepartments: [],
                     careerDevelopment: '',
                     achievementProject: '',
                     privacyConsent: false
@@ -188,11 +190,10 @@
                     nationality: '身份別',
                     education: '學歷',
                     graduationMajor: '畢業科系',
-                    travelWillingness: '國外派遣意願',
+                    travelWillingness: '國外派淺語',
                     workLocation: '目前工作地點',
-                    careerDevelopment: '職涯發展意向',
-                    careerGoals: ['成為管理人才'],
-                    lifeGoals: '個人的職涯目標',
+                    careerGoals: '職涯發展的方向',
+                    lifeGoals: '個人職涯目標與願景',
                     achievementProject: '請分享您工作上最有成就感的工作表現(不僅限於目前目前公司)',
                     mobile: '手機電話',
                     email: '電子郵件',
@@ -342,6 +343,7 @@
                     customTravelLocations: employee.customTravelLocations || [],
                     careerDevelopment: employee.careerDevelopment || '',
                     careerGoals: employee.careerGoals || [],
+                    interestedDepartments: employee.interestedDepartments || [],
                     achievementProject: employee.achievementProject || '',
                     healthInfoOptions: employee.healthInfoOptions || [],
                     healthInfoCustom: employee.healthInfoCustom || '',
@@ -568,17 +570,78 @@
             const updateCareerGoalsOptions = (option, checked) => {
                 setFormData(prev => {
                     let newOptions = [];
+                    const currentOptions = prev.careerGoals || [];
                     
-                    if (checked) {
-                        newOptions = [...prev.careerGoals, option];
+                    if (option === '仍在探索中') {
+                        // 如果選擇「仍在探索中」，則清空其他選項，只保留這個
+                        if (checked) {
+                            newOptions = ['仍在探索中'];
+                        } else {
+                            newOptions = [];
+                        }
                     } else {
-                        newOptions = prev.careerGoals.filter(opt => opt !== option);
+                        // 如果選擇其他選項，先移除「仍在探索中」（如果存在）
+                        const filteredOptions = currentOptions.filter(opt => opt !== '仍在探索中');
+                        
+                        if (checked) {
+                            // 檢查是否已達到最大選擇數量（2項）
+                            if (filteredOptions.length >= 2) {
+                                alert('最多只能選擇2項職涯發展目標');
+                                return prev;
+                            }
+                            newOptions = [...filteredOptions, option];
+                        } else {
+                            newOptions = filteredOptions.filter(opt => opt !== option);
+                        }
                     }
                     
                     return {
                         ...prev,
                         careerGoals: newOptions
                     };
+                });
+            };
+
+            // 有興趣輪調部門管理功能
+            const handleInterestedDepartmentChange = (department, checked) => {
+                setFormData(prev => {
+                    const currentDepartments = prev.interestedDepartments || [];
+                    
+                    if (checked) {
+                        // 如果選擇「無」，清空其他選項
+                        if (department === '無') {
+                            return {
+                                ...prev,
+                                interestedDepartments: ['無']
+                            };
+                        }
+                        
+                        // 如果當前已選「無」，則移除「無」並添加新部門
+                        if (currentDepartments.includes('無')) {
+                            return {
+                                ...prev,
+                                interestedDepartments: [department]
+                            };
+                        }
+                        
+                        // 檢查是否已達到最大選擇數量（3項）
+                        if (currentDepartments.length >= 3) {
+                            alert('最多只能選擇3個部門');
+                            return prev;
+                        }
+                        
+                        // 新增部門
+                        return {
+                            ...prev,
+                            interestedDepartments: [...currentDepartments, department]
+                        };
+                    } else {
+                        // 移除部門
+                        return {
+                            ...prev,
+                            interestedDepartments: currentDepartments.filter(dept => dept !== department)
+                        };
+                    }
                 });
             };
 
@@ -922,7 +985,6 @@
                                             required
                                         >
                                             <option value="">請選擇部門</option>
-                                            <option value="總公司">總公司</option>
                                             <option value="總管理處">總管理處</option>
                                             <option value="製造部">製造部</option>
                                             <option value="儲運環安">儲運環安</option>
@@ -1451,7 +1513,7 @@
 
                             <div>
                                 <h3 className="text-xl font-semibold text-gray-800 mb-6 flex items-center gap-3 border-b border-gray-200 pb-3">
-                                    💼 二、國外派遣意願
+                                    💼 二、國外派遣與部門輪調意願
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
@@ -1480,7 +1542,7 @@
                                         />
                                     </div>
                                     
-                                    {/* 外派地點選擇 - 只有在國外派遣意願不是「無法」時才顯示 */}
+                                    {/* 外派地點選擇 - 只有在國外派淺語不是「無法」時才顯示 */}
                                     {formData.travelWillingness && formData.travelWillingness !== '無法' && (
                                         <div className="md:col-span-2">
                                             <label className="block text-sm font-medium text-gray-700 mb-3">國外派遣地點選擇 (可多選)</label>
@@ -1572,6 +1634,173 @@
                                             </div>
                                         </div>
                                     )}
+                                    
+                                    {/* 部門輪調意願選項 */}
+                                    <div className="md:col-span-2">
+                                        <label className="block text-sm font-medium text-gray-700 mb-3">部門輪調意願選項(至多選擇3項) <span className="text-red-500">*</span></label>
+                                        <div className="text-xs text-gray-500 mb-4 bg-orange-50 p-3 rounded-lg">
+                                            💡 請選擇您有興趣輪調的部門（至多選擇3項，選擇「無」時為單選）
+                                        </div>
+                                        
+                                        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                            {/* 「無」選項 - 單選 */}
+                                            <div className="mb-4 p-3 bg-gray-100 rounded-lg border">
+                                                <label className="flex items-center space-x-3 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.interestedDepartments?.includes('無') || false}
+                                                        onChange={(e) => handleInterestedDepartmentChange('無', e.target.checked)}
+                                                        className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                                                    />
+                                                    <span className="text-sm text-gray-700 font-medium">無 (單選)</span>
+                                                </label>
+                                            </div>
+                                            
+                                            {/* 部門選項 */}
+                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                                <label className="flex items-center space-x-3 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.interestedDepartments?.includes('總管理處') || false}
+                                                        onChange={(e) => handleInterestedDepartmentChange('總管理處', e.target.checked)}
+                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                        disabled={formData.interestedDepartments?.includes('無')}
+                                                    />
+                                                    <span className={`text-sm ${formData.interestedDepartments?.includes('無') ? 'text-gray-400' : 'text-gray-700'}`}>總管理處</span>
+                                                </label>
+                                                <label className="flex items-center space-x-3 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.interestedDepartments?.includes('製造部') || false}
+                                                        onChange={(e) => handleInterestedDepartmentChange('製造部', e.target.checked)}
+                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                        disabled={formData.interestedDepartments?.includes('無')}
+                                                    />
+                                                    <span className={`text-sm ${formData.interestedDepartments?.includes('無') ? 'text-gray-400' : 'text-gray-700'}`}>製造部</span>
+                                                </label>
+                                                <label className="flex items-center space-x-3 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.interestedDepartments?.includes('儲運環安') || false}
+                                                        onChange={(e) => handleInterestedDepartmentChange('儲運環安', e.target.checked)}
+                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                        disabled={formData.interestedDepartments?.includes('無')}
+                                                    />
+                                                    <span className={`text-sm ${formData.interestedDepartments?.includes('無') ? 'text-gray-400' : 'text-gray-700'}`}>儲運環安</span>
+                                                </label>
+                                                <label className="flex items-center space-x-3 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.interestedDepartments?.includes('塗開處') || false}
+                                                        onChange={(e) => handleInterestedDepartmentChange('塗開處', e.target.checked)}
+                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                        disabled={formData.interestedDepartments?.includes('無')}
+                                                    />
+                                                    <span className={`text-sm ${formData.interestedDepartments?.includes('無') ? 'text-gray-400' : 'text-gray-700'}`}>塗開處</span>
+                                                </label>
+                                                <label className="flex items-center space-x-3 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.interestedDepartments?.includes('品保部') || false}
+                                                        onChange={(e) => handleInterestedDepartmentChange('品保部', e.target.checked)}
+                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                        disabled={formData.interestedDepartments?.includes('無')}
+                                                    />
+                                                    <span className={`text-sm ${formData.interestedDepartments?.includes('無') ? 'text-gray-400' : 'text-gray-700'}`}>品保部</span>
+                                                </label>
+                                                <label className="flex items-center space-x-3 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.interestedDepartments?.includes('鋼材台中') || false}
+                                                        onChange={(e) => handleInterestedDepartmentChange('鋼材台中', e.target.checked)}
+                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                        disabled={formData.interestedDepartments?.includes('無')}
+                                                    />
+                                                    <span className={`text-sm ${formData.interestedDepartments?.includes('無') ? 'text-gray-400' : 'text-gray-700'}`}>鋼材台中</span>
+                                                </label>
+                                                <label className="flex items-center space-x-3 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.interestedDepartments?.includes('鋼材台北') || false}
+                                                        onChange={(e) => handleInterestedDepartmentChange('鋼材台北', e.target.checked)}
+                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                        disabled={formData.interestedDepartments?.includes('無')}
+                                                    />
+                                                    <span className={`text-sm ${formData.interestedDepartments?.includes('無') ? 'text-gray-400' : 'text-gray-700'}`}>鋼材台北</span>
+                                                </label>
+                                                <label className="flex items-center space-x-3 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.interestedDepartments?.includes('鋼材高雄') || false}
+                                                        onChange={(e) => handleInterestedDepartmentChange('鋼材高雄', e.target.checked)}
+                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                        disabled={formData.interestedDepartments?.includes('無')}
+                                                    />
+                                                    <span className={`text-sm ${formData.interestedDepartments?.includes('無') ? 'text-gray-400' : 'text-gray-700'}`}>鋼材高雄</span>
+                                                </label>
+                                                <label className="flex items-center space-x-3 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.interestedDepartments?.includes('混凝土處') || false}
+                                                        onChange={(e) => handleInterestedDepartmentChange('混凝土處', e.target.checked)}
+                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                        disabled={formData.interestedDepartments?.includes('無')}
+                                                    />
+                                                    <span className={`text-sm ${formData.interestedDepartments?.includes('無') ? 'text-gray-400' : 'text-gray-700'}`}>混凝土處</span>
+                                                </label>
+                                                <label className="flex items-center space-x-3 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.interestedDepartments?.includes('特工處') || false}
+                                                        onChange={(e) => handleInterestedDepartmentChange('特工處', e.target.checked)}
+                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                        disabled={formData.interestedDepartments?.includes('無')}
+                                                    />
+                                                    <span className={`text-sm ${formData.interestedDepartments?.includes('無') ? 'text-gray-400' : 'text-gray-700'}`}>特工處</span>
+                                                </label>
+                                                <label className="flex items-center space-x-3 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.interestedDepartments?.includes('製造官田') || false}
+                                                        onChange={(e) => handleInterestedDepartmentChange('製造官田', e.target.checked)}
+                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                        disabled={formData.interestedDepartments?.includes('無')}
+                                                    />
+                                                    <span className={`text-sm ${formData.interestedDepartments?.includes('無') ? 'text-gray-400' : 'text-gray-700'}`}>製造官田</span>
+                                                </label>
+                                                <label className="flex items-center space-x-3 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.interestedDepartments?.includes('官田預塗') || false}
+                                                        onChange={(e) => handleInterestedDepartmentChange('官田預塗', e.target.checked)}
+                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                        disabled={formData.interestedDepartments?.includes('無')}
+                                                    />
+                                                    <span className={`text-sm ${formData.interestedDepartments?.includes('無') ? 'text-gray-400' : 'text-gray-700'}`}>官田預塗</span>
+                                                </label>
+                                                <label className="flex items-center space-x-3 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.interestedDepartments?.includes('中構官田') || false}
+                                                        onChange={(e) => handleInterestedDepartmentChange('中構官田', e.target.checked)}
+                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                        disabled={formData.interestedDepartments?.includes('無')}
+                                                    />
+                                                    <span className={`text-sm ${formData.interestedDepartments?.includes('無') ? 'text-gray-400' : 'text-gray-700'}`}>中構官田</span>
+                                                </label>
+                                                <label className="flex items-center space-x-3 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.interestedDepartments?.includes('柏東') || false}
+                                                        onChange={(e) => handleInterestedDepartmentChange('柏東', e.target.checked)}
+                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                        disabled={formData.interestedDepartments?.includes('無')}
+                                                    />
+                                                    <span className={`text-sm ${formData.interestedDepartments?.includes('無') ? 'text-gray-400' : 'text-gray-700'}`}>柏東</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1581,61 +1810,90 @@
                                 </h3>
                                 <div className="space-y-6">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">職涯發展意向 <span className="text-red-500">*</span></label>
-                                        <select
-                                            value={formData.careerDevelopment}
-                                            onChange={(e) => handleInputChange('careerDevelopment', e.target.value)}
-                                            className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                                            required
-                                        >
-                                            <option value="">請選擇</option>
-                                            <option value="不擅管理，喜專注自己工作範疇">不擅管理，喜專注自己工作範疇</option>
-                                            <option value="喜歡管理職，希望帶領團隊">喜歡管理職，希望帶領團隊</option>
-                                            <option value="喜歡技術職，希望鑽研專業領域">喜歡技術職，希望鑽研專業領域</option>
-                                            <option value="管理技術職兩者皆可，保持開放">管理技術職兩者皆可，保持開放</option>
-                                            <option value="尚無明確想法">尚無明確想法</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-3">個人的職涯目標 <span className="text-red-500">*</span></label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-3">個人的職涯發展目標（請至多選擇2項最符合您的發展方向）： <span className="text-red-500">*</span></label>
+                                        <div className="text-xs text-gray-500 mb-4 bg-blue-50 p-3 rounded-lg">
+                                            💡 請選擇符合您職涯規劃的發展方向（至多選擇2項，但選擇「仍在探索中」時為單選）
+                                        </div>
                                         
                                         <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                                            <div className="mb-3">
-                                                <span className="text-sm font-medium text-gray-600">職涯目標選項 (可多選)</span>
-                                            </div>
-                                            <div className="space-y-3">
-                                                <label className="flex items-center space-x-3 cursor-pointer">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <label className="flex items-start space-x-3 cursor-pointer">
                                                     <input
                                                         type="checkbox"
-                                                        checked={formData.careerGoals?.includes('成為管理人才') || false}
-                                                        onChange={(e) => updateCareerGoalsOptions('成為管理人才', e.target.checked)}
-                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                        checked={formData.careerGoals?.includes('管理領導型') || false}
+                                                        onChange={(e) => updateCareerGoalsOptions('管理領導型', e.target.checked)}
+                                                        className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                                     />
-                                                    <span className="text-sm text-gray-700">成為管理人才</span>
+                                                    <div>
+                                                        <span className="text-sm text-gray-700 font-medium">管理領導型</span>
+                                                        <p className="text-xs text-gray-500 mt-1">希望在2-3年內承擔團隊管理職責</p>
+                                                    </div>
                                                 </label>
-                                                <label className="flex items-center space-x-3 cursor-pointer">
+                                                <label className="flex items-start space-x-3 cursor-pointer">
                                                     <input
                                                         type="checkbox"
-                                                        checked={formData.careerGoals?.includes('成為專職人員(有證照)') || false}
-                                                        onChange={(e) => updateCareerGoalsOptions('成為專職人員(有證照)', e.target.checked)}
-                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                        checked={formData.careerGoals?.includes('技術專精型') || false}
+                                                        onChange={(e) => updateCareerGoalsOptions('技術專精型', e.target.checked)}
+                                                        className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                                     />
-                                                    <span className="text-sm text-gray-700">成為專職人員(有證照)</span>
+                                                    <div>
+                                                        <span className="text-sm text-gray-700 font-medium">技術專精型</span>
+                                                        <p className="text-xs text-gray-500 mt-1">希望在專業領域成為技術專家或顧問</p>
+                                                    </div>
                                                 </label>
-                                                <label className="flex items-center space-x-3 cursor-pointer">
+                                                <label className="flex items-start space-x-3 cursor-pointer">
                                                     <input
                                                         type="checkbox"
-                                                        checked={formData.careerGoals?.includes('成為專職人員(無證照)') || false}
-                                                        onChange={(e) => updateCareerGoalsOptions('成為專職人員(無證照)', e.target.checked)}
-                                                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                        checked={formData.careerGoals?.includes('證照強化型') || false}
+                                                        onChange={(e) => updateCareerGoalsOptions('證照強化型', e.target.checked)}
+                                                        className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                                     />
-                                                    <span className="text-sm text-gray-700">成為專職人員(無證照)</span>
+                                                    <div>
+                                                        <span className="text-sm text-gray-700 font-medium">證照強化型</span>
+                                                        <p className="text-xs text-gray-500 mt-1">希望透過專業證照提升職場競爭力</p>
+                                                    </div>
+                                                </label>
+                                                <label className="flex items-start space-x-3 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.careerGoals?.includes('穩定執行型') || false}
+                                                        onChange={(e) => updateCareerGoalsOptions('穩定執行型', e.target.checked)}
+                                                        className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                    />
+                                                    <div>
+                                                        <span className="text-sm text-gray-700 font-medium">穩定執行型</span>
+                                                        <p className="text-xs text-gray-500 mt-1">希望在現有職務上追求卓越表現</p>
+                                                    </div>
+                                                </label>
+                                                <label className="flex items-start space-x-3 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.careerGoals?.includes('跨域發展型') || false}
+                                                        onChange={(e) => updateCareerGoalsOptions('跨域發展型', e.target.checked)}
+                                                        className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                    />
+                                                    <div>
+                                                        <span className="text-sm text-gray-700 font-medium">跨域發展型</span>
+                                                        <p className="text-xs text-gray-500 mt-1">希望接觸不同領域，培養多元能力</p>
+                                                    </div>
+                                                </label>
+                                                <label className="flex items-start space-x-3 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={formData.careerGoals?.includes('仍在探索中') || false}
+                                                        onChange={(e) => updateCareerGoalsOptions('仍在探索中', e.target.checked)}
+                                                        className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                    />
+                                                    <div>
+                                                        <span className="text-sm text-gray-700 font-medium">仍在探索中</span>
+                                                        <p className="text-xs text-gray-500 mt-1">需要更多時間了解自己的職涯方向</p>
+                                                    </div>
                                                 </label>
                                             </div>
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">個人職涯目標與願景 <span className="text-red-500">*</span></label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">個人職涯目標與願景(ex : 多久時間內想要達到多少月薪/晉升xx級以上的職等/取得哪個範疇的技術能力或證照/完成xx專案等...) <span className="text-red-500">*</span></label>
                                         <textarea
                                             value={formData.lifeGoals}
                                             onChange={(e) => handleInputChange('lifeGoals', e.target.value)}
